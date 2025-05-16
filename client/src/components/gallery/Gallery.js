@@ -1,97 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import axios from 'axios';
+import AlertContext from '../../context/alert/AlertContext';
 import './Gallery.css';
 
-const mockAlbums = [
-  {
-    id: 1,
-    title: 'Graduation Ceremony 2023',
-    date: '2023-06-25',
-    description: 'Photos from the graduation ceremony of the class of 2023',
-    coverImage: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',
-    photos: [
-      {
-        id: 101,
-        url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',
-        caption: 'Graduation day celebration'
-      },
-      {
-        id: 102,
-        url: 'https://images.unsplash.com/photo-1627556704290-2b1f5853ff78',
-        caption: 'Graduates throwing caps'
-      },
-      {
-        id: 103,
-        url: 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b',
-        caption: 'Proud graduates with their diplomas'
-      },
-      {
-        id: 104,
-        url: 'https://images.unsplash.com/photo-1591987645957-ba96cf01e366',
-        caption: 'Speech by the Dean'
-      }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Career Fair 2023',
-    date: '2023-04-15',
-    description: 'Photos from our annual career fair event',
-    coverImage: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b',
-    photos: [
-      {
-        id: 201,
-        url: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b',
-        caption: 'Company booths at the career fair'
-      },
-      {
-        id: 202,
-        url: 'https://images.unsplash.com/photo-1560439514-4e9645039924',
-        caption: 'Students networking with employers'
-      },
-      {
-        id: 203,
-        url: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0',
-        caption: 'Resume review workshop'
-      }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Campus Life',
-    date: '2023-05-10',
-    description: 'A glimpse into daily life at our campus',
-    coverImage: 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a',
-    photos: [
-      {
-        id: 301,
-        url: 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a',
-        caption: 'Main campus building'
-      },
-      {
-        id: 302,
-        url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f',
-        caption: 'Students in the library'
-      },
-      {
-        id: 303,
-        url: 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0',
-        caption: 'Campus garden'
-      },
-      {
-        id: 304,
-        url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7',
-        caption: 'Science lab'
-      },
-      {
-        id: 305,
-        url: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c',
-        caption: 'Computer lab'
-      }
-    ]
-  }
-];
+// Mock data is commented out, now using API data
+// const mockAlbums = [ ... ]
 
 const Gallery = () => {
+  const alertContext = useContext(AlertContext);
+  const { setAlert } = alertContext;
+  
   const [albums, setAlbums] = useState([]);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -99,16 +17,24 @@ const Gallery = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call with loading state
-    setIsLoading(true);
-    setTimeout(() => {
-      setAlbums(mockAlbums);
-      setIsLoading(false);
-    }, 800);
-  }, []);
+    const fetchAlbums = async () => {
+      try {
+        setIsLoading(true);
+        const res = await axios.get('/api/albums');
+        setAlbums(res.data);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching albums:', err.message);
+        setIsLoading(false);
+        setAlert('Failed to load photo albums', 'danger');
+      }
+    };
+
+    fetchAlbums();
+  }, [setAlert]);
 
   const openAlbum = (albumId) => {
-    const album = albums.find(a => a.id === albumId);
+    const album = albums.find(a => a._id === albumId);
     setSelectedAlbum(album);
   };
 
@@ -133,7 +59,7 @@ const Gallery = () => {
   const navigatePhoto = useCallback((direction) => {
     if (!selectedAlbum || !selectedPhoto) return;
     
-    const currentIndex = selectedAlbum.photos.findIndex(photo => photo.id === selectedPhoto.id);
+    const currentIndex = selectedAlbum.photos.findIndex(photo => photo._id === selectedPhoto._id);
     let newIndex;
     
     if (direction === 'next') {
@@ -153,7 +79,7 @@ const Gallery = () => {
     } else if (e.key === 'Escape') {
       closePhotoModal();
     }
-  }, [navigatePhoto]);
+  }, [navigatePhoto, closePhotoModal]);
 
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -186,7 +112,7 @@ const Gallery = () => {
             </button>
             <h2>{selectedAlbum.title}</h2>
             <p className="lead">
-              <i className="fas fa-calendar-alt"></i> {formatDate(selectedAlbum.date)}
+              <i className="fas fa-calendar-alt"></i> {formatDate(selectedAlbum.createdAt)}
             </p>
             <p>{selectedAlbum.description}</p>
           </div>
@@ -194,16 +120,12 @@ const Gallery = () => {
           <div className="photos-grid">
             {selectedAlbum.photos.map(photo => (
               <div 
-                key={photo.id} 
+                key={photo._id} 
                 className="photo-card" 
                 onClick={() => openPhotoModal(photo)}
               >
-                <img src={photo.url} alt={photo.caption} loading="lazy" />
-                <div className="photo-overlay">
-                  <div className="overlay-icon">
-                    <i className="fas fa-search-plus"></i>
-                  </div>
-                </div>
+                <img src={photo.url} alt={photo.caption || 'Photo'} />
+                {photo.caption && <div className="photo-caption">{photo.caption}</div>}
               </div>
             ))}
           </div>
@@ -211,72 +133,54 @@ const Gallery = () => {
       ) : (
         <div className="albums-grid">
           {albums.map(album => (
-            <div key={album.id} className="album-card">
-              <div className="album-cover">
-                <img src={album.coverImage} alt={album.title} loading="lazy" />
-              </div>
-              <div className="album-info">
-                <h3>{album.title}</h3>
-                <p className="album-date">
-                  <i className="fas fa-calendar-alt"></i> {formatMonthDay(album.date)}
-                </p>
-                <p>{album.description}</p>
-                <span className="album-count">
-                  <i className="fas fa-images"></i> {album.photos.length} photos
-                </span>
-              </div>
-              <div className="view-album-btn" onClick={() => openAlbum(album.id)}>
-                View Album
+            <div 
+              key={album._id}
+              className="album-card" 
+              onClick={() => openAlbum(album._id)}
+            >
+              <div className="album-thumbnail">
+                <img src={album.coverImage} alt={album.title} />
+                <div className="album-info">
+                  <h3>{album.title}</h3>
+                  <p>
+                    <i className="fas fa-calendar-alt"></i> {formatDate(album.createdAt)}
+                  </p>
+                  <p>
+                    <i className="fas fa-images"></i> {album.photos.length} Photos
+                  </p>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
-      
+
+      {/* Photo Modal */}
       {photoModalOpen && selectedPhoto && (
-        <div className="photo-modal" onClick={closePhotoModal}>
+        <div className="photo-modal-overlay" onClick={closePhotoModal}>
           <div className="photo-modal-content" onClick={e => e.stopPropagation()}>
-            <div className="photo-modal-header">
-              <button className="close-btn" onClick={closePhotoModal} title="Close (Esc)">
-                <i className="fas fa-times"></i>
-              </button>
+            <button className="close-modal" onClick={closePhotoModal}>
+              <i className="fas fa-times"></i>
+            </button>
+            
+            <div className="modal-nav prev" onClick={() => navigatePhoto('prev')}>
+              <i className="fas fa-chevron-left"></i>
             </div>
             
-            <div className="photo-modal-body">
-              <button 
-                className="nav-btn prev-btn" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigatePhoto('prev');
-                }}
-                title="Previous (Left Arrow)"
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-              
-              <div className="full-photo">
-                <img src={selectedPhoto.url} alt={selectedPhoto.caption} />
-                {selectedPhoto.caption && (
-                  <div className="photo-caption">{selectedPhoto.caption}</div>
-                )}
-              </div>
-              
-              <button 
-                className="nav-btn next-btn" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigatePhoto('next');
-                }}
-                title="Next (Right Arrow)"
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
+            <div className="modal-photo">
+              <img src={selectedPhoto.url} alt={selectedPhoto.caption || 'Photo'} />
+              {selectedPhoto.caption && (
+                <div className="modal-caption">{selectedPhoto.caption}</div>
+              )}
+              {selectedPhoto.uploadedAt && (
+                <div className="modal-date">
+                  <i className="fas fa-calendar-alt"></i> {formatDate(selectedPhoto.uploadedAt)}
+                </div>
+              )}
             </div>
             
-            <div className="photo-counter">
-              {selectedAlbum && 
-                `${selectedAlbum.photos.findIndex(p => p.id === selectedPhoto.id) + 1} / ${selectedAlbum.photos.length}`
-              }
+            <div className="modal-nav next" onClick={() => navigatePhoto('next')}>
+              <i className="fas fa-chevron-right"></i>
             </div>
           </div>
         </div>

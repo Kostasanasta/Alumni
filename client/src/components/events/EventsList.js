@@ -3,71 +3,11 @@ import { Link } from 'react-router-dom';
 import Spinner from '../layout/Spinner';
 import AuthContext from '../../context/auth/AuthContext';
 import AlertContext from '../../context/alert/AlertContext';
+import axios from 'axios';
 import './EventsList.css';
 
-// Mock data for events
-const mockEvents = [
-  {
-    id: 1,
-    title: 'Career Day 2023',
-    description: 'Annual career day with companies from all over Greece. Bring your resume and be ready for on-site interviews!',
-    date: '2023-05-15',
-    time: '10:00',
-    location: 'Main Campus, Athens',
-    category: 'career',
-    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d',
-    registrationEnabled: true,
-    registrationDeadline: '2023-05-10'
-  },
-  {
-    id: 2,
-    title: 'Alumni Networking Night',
-    description: 'Join us for an evening of networking with fellow alumni from all departments. Refreshments will be served.',
-    date: '2023-06-22',
-    time: '19:00',
-    location: 'Gallery Hall, Thessaloniki Campus',
-    category: 'networking',
-    image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622',
-    registrationEnabled: true,
-    registrationDeadline: '2023-06-15'
-  },
-  {
-    id: 3,
-    title: 'International Education Conference',
-    description: 'The 5th International Conference on Education Innovation will host speakers from universities around the world.',
-    date: '2023-07-10',
-    time: '09:30',
-    location: 'Conference Center, Athens',
-    category: 'academic',
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87',
-    registrationEnabled: true,
-    registrationDeadline: '2023-06-30'
-  },
-  {
-    id: 4,
-    title: 'Summer Party 2023',
-    description: 'Our annual summer celebration with food, music, and games! Open to all alumni and their families.',
-    date: '2023-08-05',
-    time: '16:00',
-    location: 'Beach Club, Athens Riviera',
-    category: 'social',
-    image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6a3',
-    registrationEnabled: true,
-    registrationDeadline: '2023-07-25'
-  },
-  {
-    id: 5,
-    title: 'Workshop: Digital Marketing Trends',
-    description: 'Learn about the latest trends in digital marketing from industry experts in this practical workshop.',
-    date: '2023-09-12',
-    time: '14:00',
-    location: 'Digital Lab, Athens Campus',
-    category: 'workshop',
-    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978',
-    registrationEnabled: true,
-    registrationDeadline: '2023-09-05'
-  }
-];
+// Mock data is commented out, now using API data
+// const mockEvents = [ ... ]
 
 const EventsList = () => {
   const authContext = useContext(AuthContext);
@@ -77,6 +17,7 @@ const EventsList = () => {
 
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     category: 'all',
     onlyFuture: true,
@@ -84,10 +25,23 @@ const EventsList = () => {
   });
 
   useEffect(() => {
-    // Simulating API call
-    setEvents(mockEvents);
-    setFilteredEvents(mockEvents);
-  }, []);
+    // Fetch events from the API
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get('/api/events');
+        setEvents(res.data);
+        setFilteredEvents(res.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching events:', err.message);
+        setLoading(false);
+        setAlert('Failed to load events', 'danger');
+      }
+    };
+
+    fetchEvents();
+  }, [setAlert]);
 
   useEffect(() => {
     // Apply filters
@@ -137,12 +91,27 @@ const EventsList = () => {
     return today > deadline;
   };
 
-  const handleRegister = eventId => {
-    // Mock function - would connect to API in real app
-    alert(`You've registered for event #${eventId}. You'll receive confirmation by email.`);
+  const handleRegister = async (eventId) => {
+    try {
+      // Real API call to register for an event
+      if (!isAuthenticated) {
+        setAlert('You must be logged in to register for events', 'danger');
+        return;
+      }
+      
+      await axios.post(`/api/events/${eventId}/register`);
+      setAlert('You have successfully registered for this event', 'success');
+      
+      // Refresh events to update registration status
+      const res = await axios.get('/api/events');
+      setEvents(res.data);
+    } catch (err) {
+      console.error('Registration error:', err.response?.data?.msg || err.message);
+      setAlert(err.response?.data?.msg || 'Error registering for event', 'danger');
+    }
   };
 
-  if (filteredEvents.length === 0) {
+  if (loading) {
     return <Spinner />;
   }
 
@@ -198,7 +167,7 @@ const EventsList = () => {
           <p>No events found matching your criteria.</p>
         ) : (
           filteredEvents.map(event => (
-            <div key={event.id} className="event-card bg-light">
+            <div key={event._id} className="event-card bg-light">
               <div className="event-image">
                 <img src={event.image} alt={event.title} />
               </div>
@@ -220,7 +189,7 @@ const EventsList = () => {
                       <>
                         <button 
                           className="btn btn-primary" 
-                          onClick={() => handleRegister(event.id)}
+                          onClick={() => handleRegister(event._id)}
                         >
                           Register Now
                         </button>

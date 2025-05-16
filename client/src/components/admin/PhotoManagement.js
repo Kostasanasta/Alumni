@@ -2,89 +2,12 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import AuthContext from '../../context/auth/AuthContext';
 import AlertContext from '../../context/alert/AlertContext';
+import axios from 'axios';
 import Spinner from '../layout/Spinner';
 import './PhotoManagement.css';
 
-// Mock data for albums
-const mockAlbums = [
-  {
-    id: 1,
-    title: 'Graduation Ceremony 2023',
-    date: '2023-06-25',
-    description: 'Photos from the graduation ceremony of the class of 2023',
-    coverImage: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',
-    photos: [
-      {
-        id: 101,
-        url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',
-        caption: 'Graduation day celebration'
-      },
-      {
-        id: 102,
-        url: 'https://images.unsplash.com/photo-1627556704290-2b1f5853ff78',
-        caption: 'Graduates throwing caps'
-      },
-      {
-        id: 103,
-        url: 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b',
-        caption: 'Proud graduates with their diplomas'
-      },
-      {
-        id: 104,
-        url: 'https://images.unsplash.com/photo-1591987645957-ba96cf01e366',
-        caption: 'Speech by the Dean'
-      }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Career Fair 2023',
-    date: '2023-04-15',
-    description: 'Photos from our annual career fair event',
-    coverImage: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b',
-    photos: [
-      {
-        id: 201,
-        url: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b',
-        caption: 'Company booths at the career fair'
-      },
-      {
-        id: 202,
-        url: 'https://images.unsplash.com/photo-1560439514-4e9645039924',
-        caption: 'Students networking with employers'
-      },
-      {
-        id: 203,
-        url: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0',
-        caption: 'Resume review workshop'
-      }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Campus Life',
-    date: '2023-05-10',
-    description: 'A glimpse into daily life at our campus',
-    coverImage: 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a',
-    photos: [
-      {
-        id: 301,
-        url: 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a',
-        caption: 'Main campus building'
-      },
-      {
-        id: 302,
-        url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f',
-        caption: 'Students in the library'
-      },
-      {
-        id: 303,
-        url: 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0',
-        caption: 'Campus garden'
-      }
-    ]
-  }
-];
+// Mock data is commented out, now using API data
+// const mockAlbums = [ ... ]
 
 const PhotoManagement = () => {
   const authContext = useContext(AuthContext);
@@ -94,6 +17,7 @@ const PhotoManagement = () => {
 
   const [albums, setAlbums] = useState([]);
   const [currentAlbum, setCurrentAlbum] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [albumForm, setAlbumForm] = useState({
     title: '',
     description: '',
@@ -104,11 +28,26 @@ const PhotoManagement = () => {
     caption: ''
   });
   const [showAddAlbumForm, setShowAddAlbumForm] = useState(false);
+  const [showAddPhotoForm, setShowAddPhotoForm] = useState(false);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'carousel'
 
   useEffect(() => {
-    // Simulate loading albums
-    setAlbums(mockAlbums);
-  }, []);
+    // Fetch albums from the API
+    const fetchAlbums = async () => {
+      try {
+        setIsLoading(true);
+        const res = await axios.get('/api/albums');
+        setAlbums(res.data);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching albums:', err.message);
+        setIsLoading(false);
+        setAlert('Failed to load albums', 'danger');
+      }
+    };
+
+    fetchAlbums();
+  }, [setAlert]);
 
   const { title, description, coverImage } = albumForm;
   const { url, caption } = photoForm;
@@ -121,33 +60,44 @@ const PhotoManagement = () => {
     setPhotoForm({ ...photoForm, [e.target.name]: e.target.value });
   };
 
-  const handleAddAlbum = e => {
+  const handleAddAlbum = async e => {
     e.preventDefault();
-    if (!title || !description) {
-      setAlert('Please fill all required fields', 'danger');
+    if (!title) {
+      setAlert('Please fill in the album title', 'danger');
       return;
     }
 
-    const newAlbum = {
-      id: Date.now(),
-      title,
-      description,
-      coverImage: coverImage || 'https://images.unsplash.com/photo-1508896694512-1eade558679c',
-      date: new Date().toISOString().split('T')[0],
-      photos: []
-    };
+    try {
+      const newAlbumData = {
+        title,
+        description,
+        coverImage: coverImage || 'https://images.unsplash.com/photo-1508896694512-1eade558679c'
+      };
 
-    setAlbums([...albums, newAlbum]);
-    setAlert('Album added successfully', 'success');
-    setAlbumForm({
-      title: '',
-      description: '',
-      coverImage: ''
-    });
-    setShowAddAlbumForm(false);
+      const config = {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+
+      const res = await axios.post('/api/albums', newAlbumData, config);
+      
+      // Add the new album to the current list
+      setAlbums([res.data, ...albums]);
+      setAlert('Album added successfully', 'success');
+      setAlbumForm({
+        title: '',
+        description: '',
+        coverImage: ''
+      });
+      setShowAddAlbumForm(false);
+    } catch (err) {
+      console.error('Error adding album:', err.response?.data?.msg || err.message);
+      setAlert(err.response?.data?.msg || 'Error adding album', 'danger');
+    }
   };
 
-  const handleAddPhoto = e => {
+  const handleAddPhoto = async e => {
     e.preventDefault();
     if (!url) {
       setAlert('Please provide a photo URL', 'danger');
@@ -159,57 +109,89 @@ const PhotoManagement = () => {
       return;
     }
 
-    const newPhoto = {
-      id: Date.now(),
-      url,
-      caption
-    };
+    try {
+      const newPhotoData = {
+        url,
+        caption
+      };
 
-    const updatedAlbum = {
-      ...currentAlbum,
-      photos: [...currentAlbum.photos, newPhoto]
-    };
+      const config = {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
 
-    setAlbums(albums.map(album => 
-      album.id === currentAlbum.id ? updatedAlbum : album
-    ));
-    
-    setCurrentAlbum(updatedAlbum);
-    setAlert('Photo added successfully', 'success');
-    setPhotoForm({
-      url: '',
-      caption: ''
-    });
-  };
-
-  const handleDeleteAlbum = albumId => {
-    if (window.confirm('Are you sure you want to delete this album?')) {
-      setAlbums(albums.filter(album => album.id !== albumId));
-      if (currentAlbum && currentAlbum.id === albumId) {
-        setCurrentAlbum(null);
-      }
-      setAlert('Album deleted successfully', 'success');
-    }
-  };
-
-  const handleDeletePhoto = photoId => {
-    if (!currentAlbum) return;
-
-    if (window.confirm('Are you sure you want to delete this photo?')) {
-      const updatedPhotos = currentAlbum.photos.filter(photo => photo.id !== photoId);
-      const updatedAlbum = { ...currentAlbum, photos: updatedPhotos };
+      const res = await axios.post(`/api/albums/${currentAlbum._id}/photos`, newPhotoData, config);
       
+      // Update the current album with the updated photos list
+      const updatedAlbum = {
+        ...currentAlbum,
+        photos: res.data
+      };
+
+      // Update the album in the albums list
       setAlbums(albums.map(album => 
-        album.id === currentAlbum.id ? updatedAlbum : album
+        album._id === currentAlbum._id ? updatedAlbum : album
       ));
       
       setCurrentAlbum(updatedAlbum);
-      setAlert('Photo deleted successfully', 'success');
+      setAlert('Photo added successfully', 'success');
+      setPhotoForm({
+        url: '',
+        caption: ''
+      });
+      setShowAddPhotoForm(false);
+    } catch (err) {
+      console.error('Error adding photo:', err.response?.data?.msg || err.message);
+      setAlert(err.response?.data?.msg || 'Error adding photo', 'danger');
     }
   };
 
-  const handleSelectAlbum = album => {
-    setCurrentAlbum(album);
+  const handleDeleteAlbum = async albumId => {
+    if (window.confirm('Are you sure you want to delete this album?')) {
+      try {
+        await axios.delete(`/api/albums/${albumId}`);
+        
+        // Remove the album from the albums list
+        setAlbums(albums.filter(album => album._id !== albumId));
+        
+        if (currentAlbum && currentAlbum._id === albumId) {
+          setCurrentAlbum(null);
+        }
+        
+        setAlert('Album deleted successfully', 'success');
+      } catch (err) {
+        console.error('Error deleting album:', err.response?.data?.msg || err.message);
+        setAlert(err.response?.data?.msg || 'Error deleting album', 'danger');
+      }
+    }
+  };
+
+  const handleDeletePhoto = async (albumId, photoId) => {
+    if (!currentAlbum) return;
+    
+    if (window.confirm('Are you sure you want to delete this photo?')) {
+      try {
+        const res = await axios.delete(`/api/albums/${albumId}/photos/${photoId}`);
+        
+        // Update the current album with the updated photos list
+        const updatedAlbum = {
+          ...currentAlbum,
+          photos: res.data
+        };
+        
+        // Update the album in the albums list
+        setAlbums(albums.map(album => 
+          album._id === albumId ? updatedAlbum : album
+        ));
+        
+        setCurrentAlbum(updatedAlbum);
+        setAlert('Photo deleted successfully', 'success');
+      } catch (err) {
+        console.error('Error deleting photo:', err.response?.data?.msg || err.message);
+        setAlert(err.response?.data?.msg || 'Error deleting photo', 'danger');
+      }
+    }
   };
 
   const formatDate = dateString => {
@@ -217,184 +199,255 @@ const PhotoManagement = () => {
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
-  if (loading || !user) {
+  if (loading || !user || isLoading) {
     return <Spinner />;
   }
 
   return (
-    <div className="container">
-      <h1 className="large text-primary">Photo Management</h1>
-      <p className="lead">
-        <i className="fas fa-images"></i> Add and manage photo albums
-      </p>
+    <div className="photo-management-container">
+      <header className="page-header">
+        <div className="header-content">
+          <h1 className="page-title">Photo Album Management</h1>
+          <div className="header-actions">
+            <Link to="/dashboard" className="btn-back">
+              <i className="fas fa-arrow-left"></i> Back to Dashboard
+            </Link>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowAddAlbumForm(!showAddAlbumForm)}
+            >
+              <i className="fas fa-plus"></i> {showAddAlbumForm ? 'Hide Form' : 'New Album'}
+            </button>
+          </div>
+        </div>
+      </header>
 
-      <div className="back-button">
-        <Link to="/admin-dashboard" className="btn btn-light">
-          <i className="fas fa-arrow-left"></i> Back to Dashboard
-        </Link>
-      </div>
-
-      <div className="album-container">
-        <div className="albums-section">
-          <h2 className="section-title">Albums</h2>
-          
-          {!showAddAlbumForm ? (
-            <div className="add-album-button">
-              <button
-                className="btn btn-primary"
-                onClick={() => setShowAddAlbumForm(true)}
+      {showAddAlbumForm && (
+        <div className="form-container bg-light">
+          <h2 className="form-title">Create New Album</h2>
+          <form onSubmit={handleAddAlbum} className="album-form">
+            <div className="form-group">
+              <label htmlFor="title">Album Title*</label>
+              <input
+                type="text"
+                name="title"
+                value={title}
+                onChange={onAlbumFormChange}
+                placeholder="Enter album title"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="description">Description</label>
+              <textarea
+                name="description"
+                value={description}
+                onChange={onAlbumFormChange}
+                placeholder="Enter album description"
+              ></textarea>
+            </div>
+            <div className="form-group">
+              <label htmlFor="coverImage">Cover Image URL</label>
+              <input
+                type="url"
+                name="coverImage"
+                value={coverImage}
+                onChange={onAlbumFormChange}
+                placeholder="Enter cover image URL"
+              />
+            </div>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-success">
+                <i className="fas fa-save"></i> Create Album
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-light" 
+                onClick={() => {
+                  setAlbumForm({
+                    title: '',
+                    description: '',
+                    coverImage: ''
+                  });
+                  setShowAddAlbumForm(false);
+                }}
               >
-                <i className="fas fa-plus"></i> Add New Album
+                Cancel
               </button>
             </div>
-          ) : (
-            <div className="new-album-form bg-light">
-              <h3>Add New Album</h3>
-              <form onSubmit={handleAddAlbum}>
-                <div className="form-group">
-                  <input
-                    type="text"
-                    placeholder="Album Title"
-                    name="title"
-                    value={title}
-                    onChange={onAlbumFormChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <textarea
-                    placeholder="Album Description"
-                    name="description"
-                    value={description}
-                    onChange={onAlbumFormChange}
-                  ></textarea>
-                </div>
-                <div className="form-group">
-                  <input
-                    type="text"
-                    placeholder="Cover Image URL (optional)"
-                    name="coverImage"
-                    value={coverImage}
-                    onChange={onAlbumFormChange}
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="submit" className="btn btn-primary">
-                    Create Album
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-light"
-                    onClick={() => setShowAddAlbumForm(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+          </form>
+        </div>
+      )}
+
+      <div className="albums-container">
+        <div className="albums-list">
+          <h2 className="section-title">Albums</h2>
+          {albums.length === 0 ? (
+            <div className="empty-message">
+              <p>No albums found. Create your first album to get started.</p>
             </div>
-          )}
-          
-          <div className="albums-list">
-            {albums.length === 0 ? (
-              <p className="no-albums-message">No albums have been created yet.</p>
-            ) : (
-              albums.map(album => (
+          ) : (
+            <div className="albums-grid">
+              {albums.map(album => (
                 <div 
-                  key={album.id} 
-                  className={`album-card ${currentAlbum && currentAlbum.id === album.id ? 'album-selected' : ''}`}
-                  onClick={() => handleSelectAlbum(album)}
+                  key={album._id} 
+                  className={`album-card ${currentAlbum && currentAlbum._id === album._id ? 'selected' : ''}`}
+                  onClick={() => setCurrentAlbum(album)}
                 >
-                  <div className="album-card-image">
+                  <div className="album-thumbnail">
                     <img src={album.coverImage} alt={album.title} />
+                    <span className="photo-count">
+                      <i className="fas fa-images"></i> {album.photos.length}
+                    </span>
                   </div>
-                  <div className="album-card-content">
+                  <div className="album-info">
                     <h3>{album.title}</h3>
-                    <p className="album-date">{formatDate(album.date)}</p>
-                    <p className="album-photos-count">{album.photos.length} photos</p>
+                    <p className="album-date">
+                      <i className="fas fa-calendar-alt"></i> {formatDate(album.createdAt)}
+                    </p>
                     <button 
-                      className="btn btn-danger btn-sm delete-btn"
+                      className="btn-delete" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteAlbum(album.id);
+                        handleDeleteAlbum(album._id);
                       }}
+                      title="Delete Album"
                     >
-                      <i className="fas fa-trash-alt"></i> Delete
+                      <i className="fas fa-trash-alt"></i>
                     </button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-        
-        <div className="photos-section">
-          {currentAlbum ? (
-            <>
-              <div className="photos-header">
-                <h2 className="section-title">{currentAlbum.title}</h2>
-                <p className="photos-description">{currentAlbum.description}</p>
+
+        {currentAlbum && (
+          <div className="album-content">
+            <div className="album-header">
+              <h2>{currentAlbum.title}</h2>
+              <div className="album-actions">
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => setShowAddPhotoForm(!showAddPhotoForm)}
+                >
+                  <i className="fas fa-plus"></i> {showAddPhotoForm ? 'Hide Form' : 'Add Photo'}
+                </button>
+                <div className="view-toggle">
+                  <button 
+                    className={`btn-toggle ${viewMode === 'grid' ? 'active' : ''}`} 
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                  >
+                    <i className="fas fa-th"></i>
+                  </button>
+                  <button 
+                    className={`btn-toggle ${viewMode === 'carousel' ? 'active' : ''}`} 
+                    onClick={() => setViewMode('carousel')}
+                    title="Carousel View"
+                  >
+                    <i className="fas fa-film"></i>
+                  </button>
+                </div>
               </div>
-              
-              <div className="add-photo-form bg-light">
-                <h3>Add New Photo</h3>
-                <form onSubmit={handleAddPhoto}>
+            </div>
+
+            {showAddPhotoForm && (
+              <div className="form-container bg-light">
+                <h3 className="form-title">Add New Photo</h3>
+                <form onSubmit={handleAddPhoto} className="photo-form">
                   <div className="form-group">
+                    <label htmlFor="url">Photo URL*</label>
                     <input
-                      type="text"
-                      placeholder="Photo URL"
+                      type="url"
                       name="url"
                       value={url}
                       onChange={onPhotoFormChange}
+                      placeholder="Enter photo URL"
+                      required
                     />
                   </div>
                   <div className="form-group">
+                    <label htmlFor="caption">Caption</label>
                     <input
                       type="text"
-                      placeholder="Caption (optional)"
                       name="caption"
                       value={caption}
                       onChange={onPhotoFormChange}
+                      placeholder="Enter photo caption"
                     />
                   </div>
-                  <button type="submit" className="btn btn-primary">
-                    <i className="fas fa-plus"></i> Add Photo
-                  </button>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-success">
+                      <i className="fas fa-save"></i> Add Photo
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-light" 
+                      onClick={() => {
+                        setPhotoForm({
+                          url: '',
+                          caption: ''
+                        });
+                        setShowAddPhotoForm(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </form>
               </div>
-              
-              <div className="photos-grid">
-                {currentAlbum.photos.length === 0 ? (
-                  <p className="no-photos-message">No photos in this album yet.</p>
-                ) : (
-                  currentAlbum.photos.map(photo => (
-                    <div key={photo.id} className="photo-card">
-                      <div className="photo-card-image">
+            )}
+
+            <div className={`photos-container ${viewMode}`}>
+              {currentAlbum.photos.length === 0 ? (
+                <div className="empty-message">
+                  <p>No photos in this album yet. Add your first photo to get started.</p>
+                </div>
+              ) : viewMode === 'grid' ? (
+                <div className="photos-grid">
+                  {currentAlbum.photos.map(photo => (
+                    <div key={photo._id} className="photo-item">
+                      <div className="photo-image">
                         <img src={photo.url} alt={photo.caption || 'Photo'} />
-                        <div className="photo-card-actions">
+                        <div className="photo-overlay">
                           <button 
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeletePhoto(photo.id)}
+                            className="btn-delete" 
+                            onClick={() => handleDeletePhoto(currentAlbum._id, photo._id)}
+                            title="Delete Photo"
                           >
                             <i className="fas fa-trash-alt"></i>
                           </button>
                         </div>
                       </div>
-                      {photo.caption && (
-                        <div className="photo-card-caption">
-                          <p>{photo.caption}</p>
-                        </div>
-                      )}
+                      {photo.caption && <div className="photo-caption">{photo.caption}</div>}
                     </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="select-album-message">
-              <i className="fas fa-info-circle"></i> 
-              <p>Please select an album to manage photos</p>
+                  ))}
+                </div>
+              ) : (
+                <div className="photos-carousel">
+                  {/* Carousel view implementation */}
+                  <div className="carousel-container">
+                    {currentAlbum.photos.map((photo, index) => (
+                      <div key={photo._id} className="carousel-item">
+                        <img src={photo.url} alt={photo.caption || `Photo ${index + 1}`} />
+                        <div className="carousel-caption">
+                          <h3>{photo.caption || `Photo ${index + 1}`}</h3>
+                          <button 
+                            className="btn-delete" 
+                            onClick={() => handleDeletePhoto(currentAlbum._id, photo._id)}
+                          >
+                            <i className="fas fa-trash-alt"></i> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

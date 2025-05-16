@@ -17,6 +17,7 @@ import PendingProfiles from './components/admin/PendingProfiles';
 import SchoolsManagement from './components/admin/SchoolsManagement';
 import SystemStatistics from './components/admin/SystemStatistics';
 import PhotoManagement from './components/admin/PhotoManagement';
+import EventManagement from './components/admin/EventManagement';
 import PrivateRoute from './components/routing/PrivateRoute';
 import AdminRoute from './components/routing/AdminRoute';
 import Alert from './components/layout/Alert';
@@ -80,6 +81,10 @@ const App = () => {
                 <Route
                   path="/admin/gallery"
                   element={<AdminRoute component={PhotoManagement} />}
+                />
+                <Route
+                  path="/admin/events"
+                  element={<AdminRoute component={EventManagement} />}
                 />
               </Routes>
               <Footer />

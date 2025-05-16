@@ -14,7 +14,7 @@ const Profiles = () => {
   });
 
   useEffect(() => {
-    // Ελέγχουμε για query parameters στο URL
+    // Check for query parameters in the URL
     const queryParams = new URLSearchParams(location.search);
     const schoolId = queryParams.get('school');
     
@@ -28,7 +28,7 @@ const Profiles = () => {
     const getProfiles = async () => {
       try {
         const res = await api.get('/api/profiles');
-        // Φιλτράρουμε μόνο τα εγκεκριμένα προφίλ για δημόσια προβολή
+        // Filter only approved profiles for public display
         const approvedProfiles = res.data.filter(
           profile => profile.status === 'approved'
         );
@@ -65,7 +65,7 @@ const Profiles = () => {
     });
   };
 
-  // Φιλτράρισμα προφίλ
+  // Filter profiles
   const filteredProfiles = profiles.filter(profile => {
     let matchesSchool = true;
     let matchesYear = true;
@@ -87,17 +87,17 @@ const Profiles = () => {
 
   return (
     <div className="container">
-      <h1 className="large text-primary">Κατάλογος Αποφοίτων</h1>
+      <h1 className="large text-primary">Alumni Directory</h1>
       <p className="lead">
-        <i className="fab fa-connectdevelop"></i> Συνδεθείτε με άλλους αποφοίτους του Mediterranean College
+        <i className="fab fa-connectdevelop"></i> Connect with other Mediterranean College alumni
       </p>
 
       <div className="profiles-filter bg-light p-2 my-2">
-        <h4>Φίλτρα Αναζήτησης</h4>
+        <h4>Search Filters</h4>
         <div className="form">
           <div className="form-group">
             <select name="school" value={school} onChange={onChange}>
-              <option value="">Όλες οι Σχολές</option>
+              <option value="">All Schools</option>
               {schools.map(s => (
                 <option key={s._id} value={s._id}>
                   {s.name}
@@ -108,14 +108,14 @@ const Profiles = () => {
           <div className="form-group">
             <input
               type="text"
-              placeholder="Έτος Αποφοίτησης"
+              placeholder="Graduation Year"
               name="graduationYear"
               value={graduationYear}
               onChange={onChange}
             />
           </div>
           <button onClick={resetFilters} className="btn btn-light">
-            Επαναφορά Φίλτρων
+            Reset Filters
           </button>
         </div>
       </div>
@@ -139,13 +139,13 @@ const Profiles = () => {
                 <h2>{profile.user.name}</h2>
                 <p>
                   {profile.currentPosition}{' '}
-                  {profile.company && <span> στην {profile.company}</span>}
+                  {profile.company && <span> at {profile.company}</span>}
                 </p>
                 <p>{profile.location && <span>{profile.location}</span>}</p>
-                <p>Σχολή: {profile.school.name}</p>
-                <p>Έτος Αποφοίτησης: {profile.graduationYear}</p>
+                <p>School: {profile.school.name}</p>
+                <p>Graduation Year: {profile.graduationYear}</p>
                 <Link to={`/profile/${profile.user._id}`} className="btn btn-primary">
-                  Προβολή Προφίλ
+                  View Profile
                 </Link>
               </div>
 
@@ -157,14 +157,14 @@ const Profiles = () => {
                 ))}
                 {profile.skills.length > 4 && (
                   <li className="text-primary">
-                    <i className="fas fa-ellipsis-h"></i> και άλλες {profile.skills.length - 4}
+                    <i className="fas fa-ellipsis-h"></i> and {profile.skills.length - 4} more
                   </li>
                 )}
               </ul>
             </div>
           ))
         ) : (
-          <h4>Δεν βρέθηκαν προφίλ με βάση τα επιλεγμένα φίλτρα...</h4>
+          <h4>No profiles found matching your search criteria...</h4>
         )}
       </div>
     </div>
